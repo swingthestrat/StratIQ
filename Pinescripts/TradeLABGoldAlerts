@@ -1,0 +1,717 @@
+//@version=6
+indicator('TheStratLAB Alerts - GOLD + IML', overlay=true, max_bars_back=500, max_labels_count=500)
+
+lookback = input.int(0, minval=0, title="Lookback (bars ago for metrics)")
+
+showLabels = input.bool(false, 'Show Combo Labels on Chart')
+ACTION_WICK_PCT = 0.75 //  input.float(0.75, 'Actionable Wick % (H/S)', minval = 0.0, maxval = 1.0)
+
+
+const string TF_1H = "60"
+const string TF_1M = 'M'
+const string TF_1D = 'D'
+const string TF_1W = 'W'
+
+
+// === ADR Calculation ====
+atr = ta.atr(14)
+adr = ta.sma(high - low, 14) 
+arp = 100 * (ta.sma(high / low, 14) - 1)
+adr_percent = request.security(syminfo.tickerid, 'D', arp)
+
+
+// === LOD/DCR Calculation ====
+
+ATR_LEN = 20
+atrVal   = ta.atr(ATR_LEN)
+lodDist  = 100 * ((close - low) / atrVal)
+dcr      = ((close - low) / (high - low)) * 100
+
+
+// === Change from open ===
+dOpen = request.security(syminfo.tickerid, "D", open, barmerge.gaps_off, barmerge.lookahead_on)
+chgFromOpen = (close - dOpen)/ dOpen * 100
+
+// === Quarterly & Yearly change workaround ====
+
+varip float quarterOpen = na
+varip float yearOpen = na
+varip int lastQuarter = na
+varip int lastYear = na
+
+curQuarter = math.floor((month-1) / 3)
+
+if na(lastQuarter) or curQuarter != lastQuarter
+    quarterOpen := open
+    lastQuarter := curQuarter
+
+
+if na(lastYear) or year != lastYear
+    yearOpen := open
+    lastYear := year
+
+change3M = (close - quarterOpen) / quarterOpen * 100
+change12M = (close - yearOpen) / yearOpen * 100
+
+
+
+// === Strat utility functions ====
+
+
+// Copy core utility functions exactly from your original script
+get_strat_type_extended_from(hi, lo, op, cl, hip, lop, prevC) =>
+    inside = hi <= hip and lo >= lop
+    outside = hi > hip and lo < lop
+    up = hi > hip and lo >= lop
+    down = lo < lop and hi <= hip
+    outsideUp = outside and cl >= op
+    outsideDown = outside and cl < op
+    inside ? '1' : up ? cl < op ? '2uR' : '2u' : down ? cl > op ? '2dG' : '2d' : outsideUp ? '3u' : outsideDown ? '3d' : '?'
+
+get_transition_state_from(hi, lo, op, cl, hip, lop, prevC, wickPct) =>
+    t = get_strat_type_extended_from(hi, lo, op, cl, hip, lop, prevC)
+    useHS = t != '1' and t != '3u' and t != '3d'
+    shooterTop = hi - (hi - lo) * wickPct
+    hammerBt = lo + (hi - lo) * wickPct
+    isShooter = op < shooterTop and cl < shooterTop
+    isHammer = op > hammerBt and cl > hammerBt
+    useHS and isShooter ? 'S' : useHS and isHammer ? 'H' : t
+
+get_tf_strat_combo(tf) =>
+    [h4, l4, c4, h3, l3, o3, c3, h2, l2, o2, c2, h1, l1, o1, c1, h0, l0, o0, c0] = request.security(syminfo.tickerid, tf, [high[4], low[4], close[4], high[3], low[3], open[3], close[3], high[2], low[2], open[2], close[2], high[1], low[1], open[1], close[1], high, low, open, close], barmerge.gaps_off, barmerge.lookahead_on)
+    s3 = get_strat_type_extended_from(h3, l3, o3, c3, h4, l4, c4)
+    s2 = get_strat_type_extended_from(h2, l2, o2, c2, h3, l3, c3)
+    s1 = get_strat_type_extended_from(h1, l1, o1, c1, h2, l2, c2)
+    s0 = get_strat_type_extended_from(h0, l0, o0, c0, h1, l1, c1)
+    [s3 + '-' + s2 + '-' + s1, s0]
+
+// Timeframe combos
+[combo_1H, curr_1H] = get_tf_strat_combo(TF_1H)
+[combo_1D, curr_1D] = get_tf_strat_combo(TF_1D)
+[combo_1W, curr_1W] = get_tf_strat_combo(TF_1W)
+[combo_1M, curr_1M] = get_tf_strat_combo(TF_1M)
+
+// Daily OHLC for daily state
+[prev_high, prev_low, prev_open, prev_close, curr_high, curr_low, curr_open, curr_close] = request.security(syminfo.tickerid, TF_1D, [high[1], low[1], open[1], close[1], high, low, open, close], barmerge.gaps_off, barmerge.lookahead_on)
+
+prev_daily_state = get_transition_state_from(prev_high, prev_low, prev_open, prev_close, high[2], low[2], close[2], ACTION_WICK_PCT)
+curr_daily_state = get_transition_state_from(curr_high, curr_low, curr_open, curr_close, prev_high, prev_low, prev_close, ACTION_WICK_PCT)
+
+calc_change_percentage(tf) =>
+    tf_close = request.security(syminfo.tickerid, tf, close, barmerge.gaps_off, barmerge.lookahead_on)
+    tf_open = request.security(syminfo.tickerid, tf, open, barmerge.gaps_off, barmerge.lookahead_on)
+    (tf_close - tf_open) / tf_open * 100
+
+changeH   = calc_change_percentage("60")
+changeD   = calc_change_percentage("D")
+changeW   = calc_change_percentage("W")
+changeM   = calc_change_percentage("M")
+
+// 5 DMA
+ma5 = ta.sma(curr_close, 5)
+STBullish = close > ma5
+
+// 21 EMA Slope
+ema9 = ta.ema(close, 9)
+slope_length = 2
+
+calc_slope_angle(src) =>
+    ma_slope = (src - src[slope_length]) / slope_length
+    math.atan(ma_slope) * 180 / math.pi
+
+slope_angle_5dma = calc_slope_angle(ma5)
+slope_angle_9ema = calc_slope_angle(ema9)
+
+// ==========================================
+// === INMERELO (IML) STRATEGY SETTINGS ===
+// ==========================================
+grp_iml    = "Inmerelo Settings"
+iml_len_trigger = input.int(6, "IML Trigger EMA (Orange)", group=grp_iml)
+iml_len_trend   = input.int(21, "IML Trend EMA (Blue)", group=grp_iml)
+iml_fast_len    = input.int(6, "IML MACD Fast", group=grp_iml)
+iml_slow_len    = input.int(20, "IML MACD Slow", group=grp_iml)
+iml_sig_len     = input.int(9, "IML MACD Signal", group=grp_iml)
+iml_qt_open     = input.float(0.40, "IML Open Max %", minval=0, maxval=1, group=grp_iml)
+iml_qt_close    = input.float(0.70, "IML Close Min %", minval=0, maxval=1, group=grp_iml)
+iml_min_body    = input.float(0.50, "IML Min Body %", minval=0, maxval=1, group=grp_iml)
+iml_min_p_below = input.int(2, "IML Prior Closes Below", minval=1, group=grp_iml)
+iml_req_slope   = input.bool(true, "IML Req Rising EMA 6?", group=grp_iml)
+iml_use_time    = input.bool(true, "IML Time Filter?", group=grp_iml)
+iml_session     = input.session("0930-1230", "IML Allowed Session", group=grp_iml)
+iml_timezone    = input.string("America/New_York", "IML Timezone", options=["America/New_York", "Etc/UTC", "Europe/London", "Asia/Tokyo"], group=grp_iml)
+
+// --- IML Calculation Logic ---
+// EMAs
+iml_ema_trig = ta.ema(close, iml_len_trigger)
+iml_ema_trend = ta.ema(close, iml_len_trend)
+
+// MACD (Custom)
+[iml_macd, iml_sig, iml_hist] = ta.macd(close, iml_fast_len, iml_slow_len, iml_sig_len)
+iml_macd_bullish = iml_hist > 0
+
+// Candle Geometry
+iml_range = high - low
+iml_body  = math.abs(close - open)
+iml_pos_open  = iml_range > 0 ? (open - low) / iml_range : 0.5
+iml_pos_close = iml_range > 0 ? (close - low) / iml_range : 0.5
+
+// Checks
+iml_shape_valid = iml_range > 0 and (iml_body / iml_range >= iml_min_body) and (iml_pos_open <= iml_qt_open) and (iml_pos_close >= iml_qt_close)
+iml_is_reclaim  = close > iml_ema_trig
+
+// Prior Closes Context
+iml_priors_below = true
+for i = 1 to iml_min_p_below
+    if close[i] >= iml_ema_trig[i]
+        iml_priors_below := false
+
+// EMA Slope Check
+iml_slope_ok = not iml_req_slope or (iml_ema_trig > iml_ema_trig[1])
+
+// Time Session Check
+iml_in_session = not iml_use_time or not na(time(timeframe.period, iml_session + ":1234567", iml_timezone))
+
+// MASTER IML SIGNAL
+iml_triggered = iml_is_reclaim and iml_priors_below and iml_macd_bullish and iml_shape_valid and iml_in_session and iml_slope_ok
+
+// Visuals for IML
+// Plot the EMAs purely for visual reference if needed, or comment out if too messy
+plot(iml_ema_trig, "IML EMA 6", color=(iml_ema_trig > iml_ema_trig[1] ? color.orange : color.red), display=display.none) // Hidden by default to keep chart clean
+plotshape(iml_triggered, style=shape.labelup, location=location.belowbar, color=color.teal, text="IML", textcolor=color.white, size=size.tiny, title="IML Signal")
+
+
+// Strategy 5: Squeeze
+group_squeeze = "Squeeze Settings"
+lenSqueeze = input.int(20, "Squeeze length", group=group_squeeze)
+bbMult     = input.float(2.0, "BB σ", group=group_squeeze)
+kcMultH    = input.float(1.0, "KC-High", group=group_squeeze)
+kcMultM    = input.float(1.5, "KC-Mid", group=group_squeeze)
+kcMultL    = input.float(2.0, "KC-Low", group=group_squeeze)
+kcUseATR   = input.bool(false, "KC use ATR instead of TR SMA", inline="kcMode", group=group_squeeze)
+
+smaClose = ta.sma(close, lenSqueeze)
+bbDev    = bbMult * ta.stdev(close, lenSqueeze)
+bbTop    = smaClose + bbDev
+bbBot    = smaClose - bbDev
+devKC_tr  = ta.sma(ta.tr(true), lenSqueeze)
+devKC_atr = ta.atr(lenSqueeze)
+devKC     = kcUseATR ? devKC_atr : devKC_tr
+kc(mid,rng,m) => [mid+rng*m, mid-rng*m]
+[kcHiTop,kcHiBot]   = kc(smaClose, devKC, kcMultH)
+[kcMidTop,kcMidBot] = kc(smaClose, devKC, kcMultM)
+[kcLoTop,kcLoBot]   = kc(smaClose, devKC, kcMultL)
+
+tight   = bbBot>=kcHiBot and bbTop<=kcHiTop
+medium  = bbBot>=kcMidBot and bbTop<=kcMidTop
+loose   = bbBot>=kcLoBot and bbTop<=kcLoTop
+fire    = not (tight or medium or loose)
+
+mom = ta.linreg(close - math.avg(math.avg(ta.highest(high, lenSqueeze), ta.lowest(low, lenSqueeze)), smaClose), lenSqueeze, 0)
+
+// Momentum Overlay Inputs
+group_mom = "Momentum Overlay"
+showMomentumLine = input.bool(false, "Show Momentum Line", group=group_mom)
+momLineStyle     = input.string("Normalize", "Momentum Line Style", options=["Normalize","Add to Price"], group=group_mom)
+momSmoothLen     = input.int(8, "Momentum Smoothing EMA", minval=1, group=group_mom)
+momColor         = input.color(color.silver, "Momentum Line Color", group=group_mom)
+
+momEma        = ta.ema(mom, momSmoothLen)
+momNormalized = momLineStyle=="Normalize" ? momEma + smaClose : momEma + close
+//plot(showMomentumLine ? momNormalized : na, "Momentum Line", color=momColor, linewidth=2)
+
+// Trend colors example
+emaSlow   = ta.ema(close, 21)
+ttmBarCol = close>emaSlow ? color.rgb(50,150,255) : (close<emaSlow ? color.rgb(255,70,70) : color.gray)
+
+// Squeeze dots
+group_dots = "Dot Colors"
+colLowComp  = input.color(color.black, "Low Compression", group=group_dots)
+colMedComp  = input.color(color.red, "Medium Compression", group=group_dots)
+colHighComp = input.color(color.rgb(255,102,0), "High Compression", group=group_dots)
+colRelease  = input.color(color.green, "Release", group=group_dots)
+
+//plotshape(loose,  "Low Compression Dot",    location=location.bottom, style=shape.circle, color=colLowComp,  size=size.tiny)
+//plotshape(medium, "Medium Compression Dot", location=location.bottom, style=shape.circle, color=colMedComp,  size=size.tiny)
+//plotshape(tight,  "High Compression Dot",   location=location.bottom, style=shape.circle, color=colHighComp, size=size.tiny)
+//plotshape(fire,   "Release Dot",            location=location.bottom, style=shape.circle, color=colRelease,  size=size.tiny)
+
+fired   = fire and (loose[1] or medium[1] or tight[1])
+var dir = 0
+var inRun = false
+if fired
+    dir   := mom>=0 ? 1 : -1
+    inRun := true
+else if mom*dir <= 0 or tight or medium or loose
+    inRun := false
+
+// ALMA and VWAP Settings
+group_alma = "ALMA Settings"
+lenAlma  = input.int(50, "ALMA len", group=group_alma)
+almaOff  = input.float(0.85, "ALMA off", group=group_alma)
+almaSig  = input.float(6, "ALMA σ", group=group_alma)
+
+group_vwap = "VWAP Settings"
+showVwap  = input.bool(true, "Plot VWAP", group=group_vwap)
+vwapSigma = input.float(0.0, "VWAP bands σ (0 = hide)", group=group_vwap)
+
+alma = ta.alma(close, lenAlma, almaOff, almaSig)
+//plot(alma, "ALMA Ribbon", color=color.new(color.gray,70), linewidth=1)
+var float vwap = na 
+isAnchor = time == chart.left_visible_bar_time
+[vTmp,uTmp,dTmp] = ta.vwap(hlc3, isAnchor, vwapSigma)
+vwap := showVwap ? vTmp : na
+//plot(vwap, "VWAP", color=color.new(color.orange,70), linewidth=1, display=showVwap ? display.all : display.none)
+
+// === Sentiment and Oscillator (preserved in entirety) ===
+var color BULL_COLOR       = color.new(#085def, 0)
+var color BEAR_COLOR       = color.new(#f10707, 0)
+var int   NORM_SMOOTH      = 3
+var int   RSI_LENGTH       = 14
+var int   STOCH_LENGTH_K   = 14
+var int   STOCH_SMOOTH_K   = 3
+var int   SRSI_LENGTH_K    = 14
+var int   SRSI_SMOOTH_K    = 3
+var int   SRSI_RSI_LENGTH  = 14
+var int   CCI_LENGTH       = 20
+var int   BBP_LENGTH       = 13
+var string MA_TYPE         = "EMA"
+var int   MA_LENGTH        = 20
+var string VWAP_ANCHOR     = "Auto"
+var float VWAP_STDEV       = 2.0
+var string BB_TYPE         = "SMA"
+var int   BB_LENGTH        = 20
+var float BB_MULT          = 2.0
+var int   ST_PERIOD        = 10
+var float ST_FACTOR        = 3.0
+var int   LR_LENGTH        = 25
+var int   MS_LENGTH        = 5
+var float OSC_HEIGHT       = 3.5
+var int   OSC_LINE_WIDTH   = 1
+
+interpolate(value, valueHigh, valueLow, rangeHigh, rangeLow) =>
+    rangeLow + (value - valueLow) * (rangeHigh - rangeLow) / (valueHigh - valueLow)
+
+normalize(buy, sell, smooth) =>
+    var os = 0
+    var float mx = na
+    var float mn = na
+    os := buy ? 1 : sell ? -1 : os
+    mx := os > os[1] ? close : os < os[1] ? mx : math.max(close, mx)
+    mn := os < os[1] ? close : os > os[1] ? mn : math.min(close, mn)
+    ta.sma((close - mn) / (mx - mn), smooth) * 100
+
+movingAverageValue(source, length, maType) =>
+    switch maType
+        "SMA"  => ta.sma (source, length)
+        "EMA"  => ta.ema (source, length)
+        "HMA"  => ta.hma (source, length)
+        "RMA"  => ta.rma (source, length)
+        "WMA"  => ta.wma (source, length)
+        "VWMA" => ta.vwma(source, length)
+
+rsiScaled(source, length) =>
+    r = ta.rsi(source, length)
+    switch
+        r > 70 => interpolate(r, 100, 70, 100, 75)
+        r > 50 => interpolate(r, 70 , 50, 75 , 50)
+        r > 30 => interpolate(r, 50 , 30, 50 , 25)
+        r >= 0 => interpolate(r, 30 ,  0, 25 ,  0)
+
+stochasticK(lengthK, smoothK) =>
+    s = ta.sma(ta.stoch(close, high, low, lengthK), smoothK)
+    switch
+        s > 80 => interpolate(s, 100, 80, 100, 75)
+        s > 50 => interpolate(s, 80 , 50, 75 , 50)
+        s > 20 => interpolate(s, 50 , 20, 50 , 25)
+        s >= 0 => interpolate(s, 20 ,  0, 25 ,  0)
+
+stochasticRSI(rsiSource, rsiLength, stochLengthK, stochSmoothK) =>
+    r = ta.rsi(rsiSource, rsiLength)
+    s = ta.sma(ta.stoch(r, r, r, stochLengthK), stochSmoothK)
+    switch
+        s > 80 => interpolate(s, 100, 80, 100, 75)
+        s > 50 => interpolate(s, 80 , 50, 75 , 50)
+        s > 20 => interpolate(s, 50 , 20, 50 , 25)
+        s >= 0 => interpolate(s, 20 ,  0, 25 ,  0)
+
+cciScaled(source, length) =>
+    ma = ta.sma(source, length)
+    c  = (source - ma) / (0.015 * ta.dev(source, length))
+    switch
+        c > 100  => c > 300 ? 100 : interpolate(c, 300, 100, 100, 75)
+        c >= 0   => interpolate(c, 100, 0, 75, 50)
+        c < -100 => c < -300 ? 0 : interpolate(c, -100, -300, 25, 0)
+        c < 0    => interpolate(c, 0, -100, 50, 25)
+
+bullBearPower(length) =>
+    bbp = high + low - 2 * movingAverageValue(close, length, "EMA")
+    [_, upper, lower] = ta.bb(bbp, 100, 2)
+    switch
+        bbp > upper  => bbp > 1.5 * upper ? 100 : interpolate(bbp, 1.5 * upper, upper, 100, 75)
+        bbp > 0      => interpolate(bbp, upper, 0, 75, 50)
+        bbp < lower  => bbp < 1.5 * lower ? 0 : interpolate(bbp, lower, 1.5 * lower, 25, 0)
+        bbp < 0      => interpolate(bbp, 0, lower, 50, 25)
+
+movingAverageNorm(source, length, maType) =>
+    basis = movingAverageValue(source, length, maType)
+    normalize(close > basis, close < basis, NORM_SMOOTH)
+
+autoAnchor(anchor) =>
+    if anchor == 'Auto'
+        if timeframe.isintraday
+            timeframe.multiplier <= 15 ? 'D' : 'W'
+        else if timeframe.isdaily
+            'M'
+        else if timeframe.isweekly
+            '3M'
+        else if timeframe.ismonthly
+            '12M'
+    else if anchor == 'Day'
+        'D'
+    else if anchor == 'Week'
+        'W'
+    else if anchor == 'Month'
+        'M'
+    else if anchor == 'Quarter'
+        '3M'
+    else if anchor == 'Year'
+        '12M'
+
+vwapBands(source, anchor, stdev) =>
+    [_, upper, lower] = ta.vwap(source, timeframe.change(autoAnchor(anchor)), stdev)
+    normalize(close > upper, close < lower, NORM_SMOOTH)
+
+bollingerBands(source, length, mult, maType) =>
+    basis = movingAverageValue(source, length, maType)
+    deviation = mult * ta.stdev(source, length)
+    normalize(close > basis + deviation, close < basis - deviation, NORM_SMOOTH)
+
+supertrendNorm(factor, period) =>
+    [st, _] = ta.supertrend(factor, period)
+    normalize(close > st, close < st, NORM_SMOOTH)
+
+linearRegressionScaled(source, length) =>
+    50 * ta.correlation(source, bar_index, length) + 50
+
+marketStructure(length) =>
+    var float ph_y = na
+    var float pl_y = na
+    var bool  ph_cross = false
+    var bool  pl_cross = false
+    bull = false
+    bear = false
+    ph = ta.pivothigh(length, length)
+    pl = ta.pivotlow (length, length)
+    if not na(ph)
+        ph_y := ph
+        ph_cross := false
+    if not na(pl)
+        pl_y := pl
+        pl_cross := false
+    if close > ph_y and not ph_cross
+        ph_cross := true
+        bull := true
+    if close < pl_y and not pl_cross
+        pl_cross := true
+        bear := true
+    normalize(bull, bear, NORM_SMOOTH)
+
+rsiValue      = rsiScaled(close, RSI_LENGTH)
+stochValue    = stochasticK(STOCH_LENGTH_K, STOCH_SMOOTH_K)
+stochRSIValue = stochasticRSI(close, SRSI_RSI_LENGTH, SRSI_LENGTH_K, SRSI_SMOOTH_K)
+cciValue      = cciScaled(hlc3, CCI_LENGTH)
+bbpValue      = bullBearPower(BBP_LENGTH)
+maValue       = movingAverageNorm(close, MA_LENGTH, MA_TYPE)
+vwapValue     = vwapBands(close, VWAP_ANCHOR, VWAP_STDEV)
+bbValue       = bollingerBands(close, BB_LENGTH, BB_MULT, BB_TYPE)
+stValue       = supertrendNorm(ST_FACTOR, ST_PERIOD)
+regValue      = linearRegressionScaled(close, LR_LENGTH)
+msValue       = marketStructure(MS_LENGTH)
+
+sentiment = math.avg(rsiValue, stochValue, stochRSIValue, cciValue, bbpValue, maValue, nz(vwapValue, 50), bbValue, stValue, regValue, msValue)
+
+osc = OSC_HEIGHT * sentiment / 100
+
+bull = osc > OSC_HEIGHT * 0.50
+bear = osc < OSC_HEIGHT * 0.50
+
+_2dR = low < low[1] and close < open 
+_2uG = high > high[1] and close > open
+
+
+twoCloses  = close < alma and close[1] < alma[1] and close < close[1]
+
+//goShort = fired and bear
+
+//longExit  = (_2dR and longExitCross) 
+//shortExit = _2uG and osc > OSC_HEIGHT * 0.25
+
+positiveSlope = slope_angle_9ema > 0 and slope_angle_5dma > 0
+
+// Strategy 1: 2d Green Month
+strat_2dGM = curr_1M == '2dG'  and (curr_1D == '2u' or curr_1D == '2dG' or curr_1D == '3u') and changeD > 0 and close > alma
+//strat_2dGM = curr_1M == '2dG' 
+exitLong_2dGM = (curr_1W[1] == '2u' and curr_1W == '2d') or curr_1W == '3d' or curr_1W == '2uR' or twoCloses
+
+// Strategy 2: Inside Month Break
+strat_insideMonthBreak = curr_1M[1] == '1' and (curr_1M == '2u' or curr_1M == '3u') and changeM > 0 and close > alma
+exitLong_insideMonth = exitLong_2dGM  // reuse example
+
+
+// Strategy 3: StratIQ Squeeze
+//squeezeTriggered  = fired and bull and close > alma 
+squeezeTriggered = request.security(syminfo.tickerid, "D", fired and bull and close > alma)
+
+longExitCross = ta.crossunder(osc, OSC_HEIGHT * 0.75 ) or twoCloses
+
+
+
+
+// Entry markers (visual only)
+group_marks = "Entry Markers"
+showMarks   = input.bool(true, "Show entry markers", group=group_marks)
+markShape   = input.string("Triangle", "Marker shape", options=["Triangle","Arrow"], group=group_marks)
+markSizeInp = input.string("Tiny", "Marker size", options=["Tiny","Small","Normal","Large","Huge"], group=group_marks)
+markPadAtr  = input.float(0.35, "Marker padding × ATR", group=group_marks)
+colLong     = input.color(color.green, "Long colour", group=group_marks)
+colShort    = input.color(color.red, "Short colour", group=group_marks)
+
+enumSize   = markSizeInp=="Small"?size.small:markSizeInp=="Normal"?size.normal:markSizeInp=="Large"?size.large:markSizeInp=="Huge"?size.huge:size.tiny
+shapeLong  = markShape=="Arrow"?label.style_arrowup:label.style_triangleup
+shapeShort = markShape=="Arrow"?label.style_arrowdown:label.style_triangledown
+
+//plotshape(showMarks and goLong,  "Long",  location=location.belowbar, style=shape.triangleup,   color=colLong,  size=size.small)
+//plotshape(showMarks and longExit,  "Exit Long",  location=location.abovebar, style=shape.triangledown,   color=colLong,  size=size.small)
+//plotshape(showMarks and goShort, "Short", location=location.abovebar, style=shape.triangledown, color=colShort, size=size.small)
+//plotshape(showMarks and shortExit, "Exit Short", location=location.belowbar, style=shape.triangleup, color=colShort, size=size.small)
+
+// Background colors indicating strategy signals approximately (using goLong flags)
+//bgcolor(strat_2dGM       ? color.new(color.green, 85) :
+//       strat_insideMonthBreak ? color.new(color.yellow, 85) :
+//       strat_hammerDay   ? color.new(color.fuchsia, 85) :
+//       strat_gapDown2dGreenDay     ? color.new(color.blue, 85) :
+//       fired             ? color.new(color.purple, 85) : na)
+
+// Optional: Show original combo labels on chart if enabled
+//if showLabels
+//    if strat_2dGM
+//        label.new(bar_index, high, '2d Green Month', style=label.style_label_down, color=color.new(color.green, 40), textcolor=color.black)
+//   if strat_insideMonthBreak
+//        label.new(bar_index, high, 'Inside Month Break', style=label.style_label_down, color=color.new(color.yellow, 40), textcolor=color.black)
+//    if strat_hammerDay
+//        label.new(bar_index, high, 'Hammer Day', style=label.style_label_down, color=color.new(color.fuchsia, 40), textcolor=color.black)
+//    if strat_gapDown2dGreenDay
+//        label.new(bar_index, high, 'Gap 2dG Green', style=label.style_label_down, color=color.new(color.blue, 40), textcolor=color.black)
+
+
+// Persistent trade state flags
+var bool inTrade_2dGM         = false
+var bool inTrade_insideMonth  = false
+var bool inTrade_hammerDay    = false
+var bool inTrade_gapDown      = false
+var bool inTrade_squeeze      = false
+var bool inTrade_iml          = false
+
+// Update persistent flags on confirmed bars
+if barstate.isconfirmed
+    // 2d Green Month
+    if strat_2dGM
+        inTrade_2dGM := true
+    if exitLong_2dGM and inTrade_2dGM
+        inTrade_2dGM := false
+
+    // Inside Month Break
+    if strat_insideMonthBreak
+        inTrade_insideMonth := true
+    if exitLong_insideMonth and inTrade_insideMonth
+        inTrade_insideMonth := false
+
+    // Squeeze fired and mom >= 0
+    if squeezeTriggered 
+        inTrade_squeeze := true
+    if _2dR and longExitCross and inTrade_squeeze
+        inTrade_squeeze := false
+        
+    // Inmerelo Reclaim
+    if iml_triggered
+        inTrade_iml := true
+    if close < iml_ema_trig
+        inTrade_iml := false
+
+// Apply background colors during active trades
+bgcolor(inTrade_2dGM        ? color.new(color.green, 85)    :
+       inTrade_insideMonth  ? color.new(color.yellow, 85)   :
+       inTrade_squeeze      ? color.new(color.fuchsia, 85)  :
+       inTrade_iml          ? color.new(color.teal, 85)     : na)
+
+
+// Persistent variables to track previous states
+var bool prev_strat_2dGM = false
+var bool prev_strat_insideMonth = false
+var bool prev_strat_hammerDay = false
+var bool prev_strat_gapDown = false
+
+// ========== Discord Signal Logic ==========
+sigH = curr_1H == "2u" or  curr_1H == "2dG" or  curr_1H == "3u"
+sigD = (curr_1D == "2u" or  curr_1D == "2dG" or  curr_1D == "3u" ) and changeD > 0 
+sigW = curr_1W == "2u" or  curr_1W == "2dG" or  curr_1W == "3u" 
+sigM = curr_1M == "2dG"
+
+
+signalH = sigH ? "    ✅" : ""
+signalD = sigD ? "    ✅" : ""
+signalW = sigW ? "    ✅" : ""
+signalM = sigM ? "    ✅" : ""
+
+
+// Alert conditions
+monthly_trigger = sigM
+Weekly_trigger = sigD
+daily_trigger = sigD
+hourly_trigger = sigH
+
+
+
+// --- Variables from syminfo ---
+string ticker = syminfo.ticker
+string industry = syminfo.industry
+string extra = industry != "" ? "\nIndustry: " + industry : ""
+
+
+// ========== Signalling Logic 2dG Month + Daily Up ========== 
+
+var string note = ""
+note := na
+
+if strat_2dGM
+    note := "2d Green Month triggered"
+if daily_trigger
+    note := na(note) ? "Day inforce" : note + " + Day inforce"
+if hourly_trigger
+    note := na(note) ? "Hour inforce" : note + " + Hour inforce"
+
+_2dGMcurr_signal = strat_2dGM
+_2dGMprev_signal = strat_2dGM[1]
+_2dGM_signal = _2dGMcurr_signal and not _2dGMprev_signal
+
+ftfc_trigger = (changeD > 0) and (changeW > 0) and (changeM > 0)
+
+// --- Compose combos description ---
+string combos_desc = "**Strat Scenarios**\n" +     "• 1H: " + curr_1H + (signalH != "" ? " ✅" : "") + "\n" +     "• 1D: " + curr_1D + (signalD != "" ? " ✅" : "") + "\n" +     "• 1W: " + curr_1W + (signalW != "" ? " ✅" : "") + "\n" +     "• 1M: " + curr_1M + (signalM != "" ? " ✅" : "") + "\n\n"
+
+string changes_desc = "**% Change**\n" +     "• 1H: " + str.tostring(changeH,"#.##") + "%\n" +     "• 1D: " + str.tostring(changeD,"#.##") + "%\n" +     "• 1W: " + str.tostring(changeW,"#.##") + "%\n" +     "• 1M: " + str.tostring(changeM,"#.##") +     "• 1Q: " + str.tostring(change3M,"#.##") +     "• 1Y: " + str.tostring(change12M,"#.##") + "%\n\n"
+
+string meta_desc = "**Industry:** " + industry
+
+string desc = "📢 **" + ticker + " StratIQ Alert**\n" +     (na(note) ? "" : note + "\n\n") +     (ftfc_trigger ? "⭐ **FTFC** ✅\n\n" : "") +     combos_desc + changes_desc + meta_desc
+
+string descJson = str.replace_all(desc, "\n", "\\n")
+
+string _2dG_M_discord = '{"embeds":[{"title":"' + ticker + ' StratIQ Alert", "description":"' + descJson + '","color":65280}]}'
+
+//if _2dGM_signal
+//    alert(_2dG_M_discord, alert.freq_once_per_bar_close)
+
+
+// ========== Signalling Logic Inside Month BO + Daily Up ========== 
+
+sig_insideM_BO = strat_insideMonthBreak
+
+_1M_BO_curr_signal = sig_insideM_BO and daily_trigger
+_1M_BO_prev_signal = _1M_BO_curr_signal[1]
+
+new_1M_BO_signal = _1M_BO_curr_signal and not _1M_BO_prev_signal
+
+
+
+var string _1M_BO_note = ""
+_1M_BO_note := na
+
+if new_1M_BO_signal
+    _1M_BO_note := "Inside/2u/3u Month BO triggered"
+if daily_trigger
+    _1M_BO_note := na(_1M_BO_note) ? "Day inforce" : _1M_BO_note + " + Day inforce"
+if hourly_trigger
+    _1M_BO_note := na(_1M_BO_note) ? "Hour inforce" :  _1M_BO_note + " + Hour inforce"
+
+string _1M_BO_desc = "📢 **" + ticker + " StratIQ Alert**\n" +     (na(_1M_BO_note) ? "" : _1M_BO_note + "\n\n") +     (ftfc_trigger ? "⭐ **FTFC** ✅\n\n" : "") +     combos_desc + changes_desc + meta_desc
+
+string _1M_BO_descJson = str.replace_all(_1M_BO_desc, "\n", "\\n")
+string _1M_BO_discord = '{"embeds":[{"title":"' + ticker + ' StratIQ Alert","description":"' + _1M_BO_descJson + '","color":16705372}]}'
+
+//if new_1M_BO_signal
+//    alert(_1M_BO_discord, alert.freq_once_per_bar_close)
+
+
+// ========== Signalling Logic StratIQ Squeeze + Daily Up ========== 
+sig_squeeze = squeezeTriggered
+
+
+
+squeeze_signal = sig_squeeze
+squeeze_prev_signal = squeeze_signal[1]
+new_squeeze_signal = squeeze_signal and not squeeze_prev_signal
+
+
+
+
+var string squeeze_note = ""
+squeeze_note := na
+
+if new_squeeze_signal
+    squeeze_note := "StratIQ Squeeze triggered"
+if daily_trigger
+    squeeze_note := na(squeeze_note) ? "Day inforce" : squeeze_note + " + Day inforce"
+if hourly_trigger
+    squeeze_note := na(squeeze_note) ? "Hour inforce" :  squeeze_note + " + Hour inforce"
+
+string squeeze_desc = "📢 **" + ticker + " StratIQ Alert**\n" +     (na(squeeze_note) ? "" : squeeze_note + "\n\n") +     (ftfc_trigger ? "⭐ **FTFC** ✅\n\n" : "") +     combos_desc + changes_desc + meta_desc
+
+string squeeze_descJson = str.replace_all(squeeze_desc, "\n", "\\n")
+string squeeze_discord = '{"embeds":[{"title":"' + ticker + ' StratIQ Alert","description":"' + squeeze_descJson + '","color":16711935}]}'
+
+if new_squeeze_signal
+    alert(squeeze_discord, alert.freq_once_per_bar_close)
+
+// ========== Signalling Logic INMERELO (IML) RECLAIM ========== 
+// Only triggers on valid IML signal (which includes Time Filter + Slope check)
+
+_iml_curr_signal = iml_triggered
+_iml_prev_signal = iml_triggered[1]
+// Trigger on fresh signal only
+new_iml_signal = _iml_curr_signal and not _iml_prev_signal
+
+var string iml_note = ""
+iml_note := na
+
+if new_iml_signal
+    iml_note := "Inmerelo Reclaim Triggered"
+if daily_trigger
+    iml_note := na(iml_note) ? "Day inforce" : iml_note + " + Day inforce"
+
+string iml_desc = "📢 **" + ticker + " IML Alert**\n" + (na(iml_note) ? "" : iml_note + "\n\n") + combos_desc + changes_desc + meta_desc
+string iml_descJson = str.replace_all(iml_desc, "\n", "\\n")
+string iml_discord = '{"embeds":[{"title":"' + ticker + ' IML Alert","description":"' + iml_descJson + '","color":3066993}]}' // Teal Color
+
+if new_iml_signal
+    alert(iml_discord, alert.freq_once_per_bar_close)
+
+
+// ========== Alerts
+
+//alertcondition(strat_2dGM[lookback], title="2dgM",  message="2dgM" )
+//alertcondition(strat_insideMonthBreak[lookback], title="IMBO",  message="IMBO" )
+alertcondition(squeezeTriggered[lookback], title="StratIQ Squeeze",  message="StratIQ Squeeze" )
+alertcondition(iml_triggered[lookback], title="Inmerelo Reclaim", message="IML Reclaim")
+
+
+plot(close[lookback], color=color.white, title="Price", display=display.none)
+plot(adr_percent[lookback],   title="ADR %",             color=color.blue, style=plot.style_histogram, linewidth=2, display=display.none)
+plot(lodDist[lookback],       title="LOD ",   color=color.blue, style=plot.style_histogram, linewidth=2, display=display.none)
+plot(dcr[lookback],           title="Close Range",        color=color.blue, style=plot.style_histogram, linewidth=2, display=display.none)
+plot(chgFromOpen[lookback],   title="Change from open",   color=color.blue, style=plot.style_histogram, linewidth=2,display=display.none)
+plot(change12M[lookback],       title="Yearly Change",    color=color.blue, style=plot.style_histogram, linewidth=2, display=display.none)
+plot(change3M[lookback],       title="Quarterly Change",    color=color.blue, style=plot.style_histogram, linewidth=2, display=display.none)
+plot(changeM[lookback],       title="Monthly Change",    color=color.blue, style=plot.style_histogram, linewidth=2, display=display.none)
+plot(changeW[lookback],       title="Weekly Change",     color=color.blue, style=plot.style_histogram, linewidth=2, display=display.none)
+plot(changeD[lookback],       title="Daily Change",      color=color.blue, style=plot.style_histogram, linewidth=2, display=display.none)

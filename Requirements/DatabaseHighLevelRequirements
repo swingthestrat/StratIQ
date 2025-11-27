@@ -1,0 +1,173 @@
+Database Requirements Specification: Strat Scanner
+
+1. Introduction
+
+This document outlines the data requirements for the "Strat Scanner" application. It defines the data structures, relationships, ingestion workflows, and retention policies required to support market scanning, multi-timeframe analysis, and performance metrics.
+
+2. Data Entity Requirements
+
+The database must support three distinct categories of data: Reference Data (Static), Market Data (Time-Series), and Analytical Data (Derived/Calculated).
+
+2.1 Reference Data Entities
+
+These entities define the universe of instruments being tracked.
+
+Tickers Entity
+
+Purpose: The master record for every tradable instrument.
+
+Fields: Unique Identifier, Ticker Symbol (e.g., AAPL), Company Name, Industry, Active Status (Boolean).
+
+Universes Entity
+
+Purpose: Categorization of tickers into broad groups (e.g., SPY, QQQ, IPO).
+
+Structure: Universe Name.
+
+Relationship: Many-to-Many with Tickers (A ticker can belong to multiple universes; a universe contains multiple tickers).
+
+Themes Entity
+
+Purpose: Categorization of tickers into specific thematic verticals.
+
+Structure: Theme Name (e.g., "AI"), Sub-Theme Name (e.g., "Precision Medicine").
+
+Relationship: Many-to-Many with Tickers.
+
+2.2 Market Data Entities (OHLCV)
+
+These entities store raw price data fetched from external providers.
+
+Historic/Daily OHLCV Entity
+
+Purpose: Stores the end-of-day data used for historical analysis and backtesting.
+
+Retention: Minimum of 3 years of historical data per ticker.
+
+Fields: Ticker ID, Date, Open, High, Low, Close, Volume.
+
+Intraday OHLCV Entity
+
+Purpose: Stores data required for "current day" scanning during market hours.
+
+Frequency: Updated hourly.
+
+Fields: Ticker ID, Timestamp, Timeframe (e.g., 60m), Open, High, Low, Close, Volume.
+
+2.3 Analytical Data Entities (Derived)
+
+These entities store the calculated results of the "Strat" logic and performance metrics.
+
+Strat Scenarios Entity
+
+Purpose: Stores the calculated Strat state for every ticker across all monitored timeframes.
+
+Timeframes to Capture: 1D, 2D, 3D, 5D, 1W, 2W, 1M, 1Q, 1Y.
+
+Fields:
+
+Ticker ID
+
+Date of Calculation
+
+Timeframe Identifier
+
+Candle State (1, 2d, 2dG, 2u, 2uR,3u, 3d)
+
+Detected Pattern (e.g., "Hammer", "Shooter", "Rev Strat")
+
+In-Force Status (Boolean)
+
+FTFC Status (Bullish/Bearish/TTO etc)
+
+Ticker Metrics Entity
+
+Purpose: Stores performance and strength metrics for sorting and filtering.
+
+Fields:
+
+Ticker ID
+
+Date
+
+Performance: Change from Open, WTD (Week to Date), MTD, QTD, YTD.
+
+Absolute Strength: Percentile ranking of performance (Daily, Weekly, Monthly, Quarterly).
+
+Relative Strength: Percentile ranking compared to SPY benchmark (Daily, Weekly, Monthly, Quarterly).
+
+3. Data Ingestion & Processing Requirements
+
+The system requires specific workflows to handle data entry and automated updates.
+
+3.1 Universe & Theme Ingestion
+
+Universe Import:
+
+Must accept a list of ticker symbols as a single text string separated by spaces (e.g., "AAPL MSFT GOOG").
+
+System must parse the string, identify existing tickers, create new records for unknown tickers, and update the Universe association.
+
+Theme Import:
+
+Must accept CSV file uploads.
+
+CSV Structure: 3 columns -> Theme, Sub-Theme, Ticker.
+
+System must parse the CSV to update Theme associations.
+
+3.2 Historic Backfill (One-time Task)
+
+Upon the creation of a new Ticker, the system must automatically trigger a job to fetch the last 3 years of Daily OHLCV data.
+
+Once raw data is fetched, the system must calculate and populate the Strat Scenarios and Ticker Metrics tables for that historical period.
+
+3.3 End-of-Day (EOD) Processing Job
+
+Trigger: Market Close.
+
+Tasks:
+
+Fetch Daily OHLCV for all active tickers.
+
+Aggregation Logic: The database or processing layer must computationally construct non-standard candles (2D, 3D, 5D, 2W) by aggregating the raw Daily OHLCV data.
+
+Example 2D Candle: High = Max(Day 1 High, Day 2 High); Low = Min(Day 1 Low, Day 2 Low); Volume = Sum(Vol 1, Vol 2).
+
+Compute Strat Scenarios for all timeframes based on the new aggregated data.
+
+Compute Performance Metrics (WTD, YTD, etc.), Absolute Strength ranking, and Relative Strength rankings.
+
+Store results in Strat Scenarios and Ticker Metrics entities.
+
+3.4 Intraday Processing Job
+
+Trigger: Hourly during market open.
+
+Tasks:
+
+Fetch current OHLCV price data for the Daily timeframe.
+
+Update the records in the Strat Scenarios entity to Ticker metrics of current live candle.
+
+4. Functional Retrieval Requirements
+
+The database structure must support high-performance querying for the following user interface operations:
+
+Multi-Criteria Filtering: Ability to query Strat Scenarios to find tickers matching a specific Pattern AND Timeframe AND Universe (e.g., "Find all Inside Bars on the Weekly timeframe within the 'AI' Theme").
+
+Breadth Analysis: Ability to aggregate the Strat Scenarios table to count the total number of "2-Up" vs "2-Down" scenarios across a specific Universe or Sector.
+
+Sorting: Ability to sort large lists of tickers based on the Ticker Metrics fields (e.g., "Sort by Relative Strength vs SPY (Monthly)").
+
+Drill-Down: Retrieve specific attributes (Theme, Sub-theme) associated with a single Ticker ID.
+
+5. Data Volume Estimates (Scalability)
+
+Tickers: Estimated 3000-4000 active symbols.
+
+Daily Records: ~10,000 rows added per day.
+
+Strat Scenarios: High volume. (10,000 Tickers × 9 Timeframes = 90,000 records generated/updated daily).
+
+Design Implication: The Strat Scenarios and OHLCV entities must be optimized for write-heavy operations during EOD processing and read-heavy operations during

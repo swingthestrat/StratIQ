@@ -1,0 +1,327 @@
+Dont use this
+
+Stock Screening System - Functional Requirements Document
+Executive Summary
+This document outlines the functional and technical requirements for a local laptop-based stock screening system that detects The Strat setups across 1,000+ stocks and 200+ custom thematic groups, with near real-time Discord notifications.
+1. System Overview
+A Python-based trading system running on a local laptop that:
+Ingests stock price data from IBKR [finance:Interactive Brokers] or Alpaca or any other system
+Detects technical setups (The Strat patterns) across multiple timeframes
+Groups stocks into custom synthetic tickers for thematic analysis
+Sends alerts via Discord webhooks from the local laptop environment
+Requires no hosting or external infrastructure costs
+
+
+2. Data Ingestion Requirements
+2.1 Price Data Sources
+IBKR [finance:Interactive Brokers] API
+Alpaca API
+Free Data Considerations
+Minimize costs; leverage existing IBKR subscription for most data
+Cache aggressively to reduce API calls
+Batch requests to respect rate limits
+2.2 Data Frequency and Coverage
+Initial Implementation
+End-of-day (EOD) data collection
+Full universe of approximately 1,000 stocks
+Run once daily after market close
+Future State
+Intra-day data ingestion every 30 minutes
+Same 1,000 stock universe
+Flexible scheduling for different markets
+Ability to add remove stocks
+Data Stored per Stock
+OHLCV: Open, High, Low, Close, Volume
+Timestamp for each candle
+Support multiple timeframes from single price source via aggregation (D, 2d, 3d, W, 2W, 3W, 1M, 3M, 1Y)
+
+3. Storage and Data Management
+3.1 Database Layer
+TimeScaleDB (PostgreSQL Extension)
+Time-series optimized relational database
+Run locally on laptop
+Efficient compression and chunking of price data
+Support for time-based queries and aggregations
+Data Schema Requirements
+Table: ohlcv_data (symbol, timestamp, open, high, low, close, volume, timeframe)
+Table: themes (theme_id, theme_name, description, created_date, updated_date)
+Table: theme_tickers (theme_id, ticker, position_in_theme)
+Indexes on (symbol, timestamp, timeframe) and theme_id for fast lookups
+Retention policies for historical data management
+3.2 Data Quality
+Validate OHLCV data (high ≥ low, close within high/low range)
+Handle missing/split-adjusted price data
+Log data ingestion errors and retry logic
+
+4. Pattern Detection - The Strat Setups
+4.1 Setup Types to Detect
+Two Down and Green
+Two consecutive down candles with green bodies (close > open)
+Detect at specified timeframe
+Two Up and Red
+Two consecutive up candles with red bodies (close < open)
+Detect at specified timeframe
+Inside Bars
+Current candle high < previous high AND current candle low > previous low
+Detect at specified timeframe
+4.2 Timeframe Support
+Support pattern detection across the following timeframes:
+Daily (1D)
+2-Day (2D)
+3-Day (3D)
+Weekly (1W)
+Monthly (1M)
+Quarterly (1Q)
+Yearly (1Y) - optional
+Multi-Timeframe Aggregation
+Single daily OHLCV source can be aggregated into higher timeframes
+Implement time-bucketing logic to combine candles (e.g., 5 daily candles = 1 weekly)
+4.3 Detection Logic
+Integrate user's existing Python scripts for pattern detection
+Modularize detection functions for reusability
+Return: ticker, setup type, timeframe, date detected, price data (open, high, low, close)
+
+5. Custom Synthetic Themes
+5.1 Theme Definition and Management
+Theme Composition
+Each theme is a named group of ticker symbols
+Example: Quantum theme contains RGTI, QBTS, QUBT, IONQ
+Approximately 200 distinct themes expected
+Themes are user-defined and user-maintained
+Theme Data Source
+Primary: Google Sheets (user-managed master list)
+Columns: Theme Name, Ticker Symbol, Description (optional), Active Status
+System syncs with Google Sheets periodically
+Theme Storage Locally
+Cached in TimeScaleDB for fast querying
+Refresh from Google Sheets on startup and periodically (e.g., every hour)
+5.2 Thematic Analysis
+Theme-Level Setup Detection
+Run The Strat pattern detection on all tickers within a theme
+Aggregate results by theme to provide theme-level summary
+Generate theme alerts when X% of tickers show setup or when flagship tickers trigger
+Example Output
+"Quantum theme: 3 of 4 tickers show Two Down and Green on daily - RGTI, QBTS, QUBT"
+Separate alerts for individual tickers vs. theme-level summaries
+
+6. User Interface Requirements
+6.1 Theme Management Interface
+Add/Create Theme
+Input: Theme name, description (optional)
+Output: Theme created and assigned unique ID
+Add tickers to theme via dropdown or manual entry
+Validate ticker symbols against supported exchanges
+Update Theme
+Modify theme name or description
+Add new tickers to existing theme
+Remove tickers from theme
+Set theme active/inactive status
+Delete Theme
+Remove theme and associated data
+Option to archive instead of delete
+View All Themes
+Display list of 200 themes
+Show ticker count per theme
+Show active/inactive status
+Search and filter functionality
+6.2 UI Technology
+Technology Options
+Web-based dashboard (Flask/Django + HTML/CSS/JavaScript) - lightweight, runs locally on localhost:5000
+Desktop app (PyQt or similar) - native performance
+Streamlit - rapid development, interactive Python-based dashboard
+Recommendation: Streamlit
+Rapid development from Python code
+Interactive controls and forms
+Real-time data updates
+Minimal overhead
+Easy integration with existing Python scripts
+Key UI Screens
+Dashboard: Overview of recent setups detected, theme performance summary
+Theme Manager: Add/edit/delete/view themes
+Scan Results: Filter and view detected setups by ticker, theme, timeframe, date
+Settings: Configure API credentials, refresh intervals, Discord webhook URL, notification preferences
+
+7. Notifications and Alerts
+7.1 Discord Webhook Integration
+Alert Format
+🔔 Stock Alert - Two Down and Green
+Symbol: RGTI | Timeframe: Daily | Date: 2025-11-25
+Open: $X.XX | High: $X.XX | Low: $X.XX | Close: $X.XX
+Alert Format - Theme Level
+🎯 Quantum Theme Alert
+Setup: Two Down and Green (Daily)
+Tickers: RGTI, QBTS, QUBT (3/4 in theme)
+7.2 Alert Configuration
+User configurable: which setups to alert on
+Threshold: alert on individual ticker vs. theme level or both
+Time of day: when to send alerts (prevent spam outside trading hours)
+Disable alerts for inactive themes or specific tickers
+7.3 Notification Scheduling
+Near real-time for intra-day data (when 30-min ingestion active)
+EOD summary for daily data ingestion
+No duplicate alerts within 24 hours for same setup
+
+8. Technical Architecture
+8.1 Core Components
+Data Ingestion Service
+Scheduler: orchestrates on-demand or periodic data fetches
+IBKR Connector: pulls data from IBKR API
+Alpaca Connector: pulls data from Alpaca API
+Data Validator: checks OHLCV integrity
+Database Writer: inserts into TimeScaleDB
+Pattern Detection Engine
+Processes stored price data
+Runs detection logic for each timeframe
+Returns setup results with metadata
+Modular design to incorporate user's Python scripts
+Theme Aggregator
+Queries setups by theme
+Summarizes theme-level activity
+Generates theme alerts
+Notification Service
+Formats alerts
+Posts to Discord webhook
+Handles retry logic
+User Interface (Streamlit)
+Theme management CRUD operations
+Dashboard and scan results viewing
+Settings and configuration
+Responsive to real-time data updates
+8.2 Data Flow
+IBKR/Alpaca API
+↓
+[Data Ingestion Service]
+↓
+TimeScaleDB (OHLCV Storage)
+↓
+[Pattern Detection Engine]
+↓
+Detected Setups (in-memory or temp table)
+↓
+[Theme Aggregator] + [Notification Service]
+↓
+Discord Webhook + [Streamlit UI]
+8.3 Deployment
+Single laptop: no external hosting required
+Python 3.9+ environment
+PostgreSQL + TimeScaleDB installed locally
+Streamlit server runs on localhost
+Long-running process or scheduled tasks (cron/Task Scheduler)
+
+9. Cost Considerations
+No Hosting Costs
+All services run on local laptop
+Minimal API Costs
+IBKR: included in existing subscription (market data subscriptions may apply)
+Alpaca: free tier available
+Google Sheets API: free tier sufficient for theme sync
+Hardware
+Existing laptop with adequate storage (SSD preferred)
+PostgreSQL + TimeScaleDB minimal resource footprint
+Total Additional Cost: $0 (if using existing IBKR account)
+
+10. Functional Requirements Summary
+Requirement
+Description
+Priority
+Status
+EOD data ingestion
+Ingest OHLCV from IBKR for 1,000 stocks daily
+High
+
+
+Multi-timeframe support
+Detect setups on 7 timeframes (1D, 2D, 3D, 1W, 1M, 1Q, 1Y)
+High
+
+
+Strat pattern detection
+Two Down/Green, Two Up/Red, Inside Bars
+High
+
+
+Theme management
+CRUD operations for 200 custom themes
+High
+
+
+Google Sheets sync
+Sync theme definitions from user's Google Sheet
+High
+
+
+Theme-level analysis
+Aggregate setups by theme, generate theme alerts
+Medium
+
+
+Discord notifications
+Post alerts to Discord via webhook
+High
+
+
+Local storage
+TimeScaleDB for price and theme data
+High
+
+
+Web UI (Streamlit)
+Dashboard, theme manager, scan results, settings
+High
+
+
+Future: 30-min ingest
+Support intra-day ingestion every 30 minutes
+Medium
+Future
+Custom themes (~200)
+Support approximately 200 user-defined themes
+High
+
+
+
+
+
+11. Non-Functional Requirements
+Performance
+Pattern detection across 1,000 stocks completes in < 5 minutes
+Discord notification latency < 30 seconds from detection
+UI response time < 2 seconds for common queries
+Reliability
+Graceful error handling for API failures
+Automatic retry logic with exponential backoff
+Data integrity checks and validation
+Scalability
+Support up to 2,000 stocks and 500 themes without major refactoring
+Multi-timeframe aggregation efficient for large datasets
+Maintainability
+Modular code structure
+Integration with existing user Python scripts
+Clear documentation and error logging
+Security
+All secrets are stored locally
+Nothing external
+
+Potential integration with Looker Studio or similar tools
+
+
+12. Success Criteria
+✓ System runs entirely on local laptop with no hosting fees
+✓ End-of-day data ingestion completes successfully for 1,000 stocks
+✓ All Strat setup types detected across all 7 timeframes
+✓ Discord alerts received with correct setup and ticker information
+✓ User can add, edit, delete, and view 200+ themes via UI
+✓ Google Sheets sync keeps theme definitions current
+✓ Theme-level summaries correctly aggregate ticker setups
+✓ System operates unattended with scheduled daily runs
+
+13. Next Steps
+Finalize technology stack (Python, Streamlit, TimeScaleDB, IBKR API)
+Design TimeScaleDB schema and setup locally
+Implement IBKR data connector and initial EOD ingestion
+Integrate user's existing Python pattern detection scripts
+Build Streamlit UI for theme management and dashboard
+Implement Discord webhook notification service
+Test end-to-end workflow with sample themes and tickers
+Deploy to local scheduler (cron/Windows Task Scheduler)
+Plan future roadmap: 30-minute intra-day ingestion, machine learning theme analysis

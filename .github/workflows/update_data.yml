@@ -1,0 +1,39 @@
+name: Update StratIQ Data
+
+on:
+  schedule:
+    # Every 1 hour during market hours (9:30 AM - 4:00 PM ET = 14:30 - 21:00 UTC)
+    # Monday-Friday only
+    - cron: '30 14-20 * * 1-5'  # Every hour, 9:30 AM - 3:30 PM ET (7 updates/day)
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Run data update
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: |
+          python run_full_update.py
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Data update failed at $(date)"

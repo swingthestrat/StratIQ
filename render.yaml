@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: stratiq-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: CORS_ORIGINS
+        value: "https://stratiq.vercel.app,http://localhost:5173"

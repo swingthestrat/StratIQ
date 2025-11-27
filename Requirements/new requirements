@@ -1,0 +1,55 @@
+Core Scanning Functionality
+Scan Modes: The scanner must support two distinct operational modes:
+
+Signal Mode: Displays patterns that are currently "In Force" or acting as a continuation (e.g., a "2-Up" continuing upwards).
+
+Setup Mode: Displays potential setups forming for the next period (e.g., used after market close to find "Inside Bars" for the next day).
+
+Time Frame Support: Users must be able to toggle between specific time frames: 15m, 30m, 60m, Daily, Weekly, Monthly, and Yearly.
+
+Pattern Recognition ("The Strat"): The engine must automatically identify and filter for specific price action scenarios, including:
+
+Candle States: Inside Bars (1), Directional Bars (2-Up/2-Down), Outside Bars (3).
+
+Complex Patterns: 2-1-2 Reversals, 3-1-2 Reversals, Rev Strats, Failed 2s (e.g., 2-Down Green, 2-Up Red).
+
+Candle Shapes: Hammers and Shooters.
+
+Expansions: Range expansions.
+
+3. Dashboard & User Interface
+Customizable Grid:
+
+Columns: Users must be able to add, remove, and reorder columns via drag-and-drop.
+
+Data Points: Available columns must include Ticker, Pattern (e.g., "2-1"), Current Candle status, Average Volume, In-Force Status, Dollar Change, and Full Time Frame Continuity (FTFC).
+
+Quick Filters: A dedicated button/menu for one-click application of common filters (e.g., "Show all Hammers," "Show all 2-2 Reversals").
+
+My Filters: A section for users to save, name, and retrieve their own custom filter configurations.
+
+Ticker Search: A global search bar to isolate a specific ticker (e.g., "QQQ") to view its current state and patterns instantly.
+
+4. Market Intelligence (Sector Stats)
+Aggregated Statistics: A collapsible panel at the bottom of the screen that displays market-wide breadth.
+
+Metrics:
+
+Must compare the percentage of "2-Ups" vs. "2-Downs" for the S&P, NASDAQ, and individual sectors (e.g., Basic Materials).
+
+Visual Logic (Color Coding):
+
+Green: Indicates a bullish bias (more Ups than Downs).
+
+Red: Indicates a bearish bias (more Downs than Ups).
+
+Yellow: Highlights extreme outliers (the strongest or weakest sectors, e.g., >83% directional bias).
+
+Latency: Data currently updates every 1-2 minutes, with a requirement to reduce this to near real-time (seconds) in future iterations.
+
+5. Visualization & Analysis Tools
+Integrated Charting: Clicking a ticker in the results list must open an integrated chart window.
+
+Multi-Timeframe View: The chart view must display multiple timeframes simultaneously (e.g., Month, Week, Day, 60m) to allow for immediate trend analysis without leaving the scanner.
+
+Data Export: The system must allow users to export the current scan results to CSV or Excel formats for external tracking.

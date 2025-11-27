@@ -1,0 +1,306 @@
+Theme/Category,Ticker,Company Name/Description
+Integrated Supermajors,XOM,Exxon Mobil
+Integrated Supermajors,CVX,Chevron
+Integrated Supermajors,SHEL,Shell
+Integrated Supermajors,TTE,TotalEnergies
+Integrated Supermajors,BP,BP
+Independent E&P (Shale),EOG,EOG Resources
+Independent E&P (Shale),FANG,Diamondback Energy
+Independent E&P (Shale),DVN,Devon Energy
+Independent E&P (Shale),OXY,Occidental Petroleum
+Independent E&P (Shale),CTRA,Coterra Energy
+Independent E&P (Shale),MRO,Marathon Oil
+Independent E&P (Shale),PXD,Pioneer Natural Resources
+Independent E&P (Shale),HES,Hess Corp
+Independent E&P (Shale),APA,Apache Corp
+Natural Gas Specialists,EQT,EQT Corp
+Natural Gas Specialists,CHK,Chesapeake Energy
+Natural Gas Specialists,RRC,Range Resources
+Natural Gas Specialists,AR,Antero Resources
+International & NOCs,PBR,Petrobras
+International & NOCs,E,Eni
+International & NOCs,STO,Statoil (Equinor)
+International & NOCs,EC,Ecopetrol
+Canadian Sands,CNQ,Canadian Natural Resources
+Canadian Sands,SU,Suncor Energy
+Canadian Sands,CVE,Cenovus Energy
+Big Three OFS,SLB,Schlumberger
+Big Three OFS,HAL,Halliburton
+Big Three OFS,BKR,Baker Hughes
+Drilling Contractors,RIG,Transocean
+Drilling Contractors,HP,Helmerich & Payne
+Drilling Contractors,VAL,Valaris
+Drilling Contractors,NE,Noble Corp
+Equipment & Manufacturing,NOV,NOV Inc
+Equipment & Manufacturing,FTI,TechnipFMC
+Equipment & Manufacturing,WHD,Cactus
+Equipment & Manufacturing,DRQ,Dril-Quip
+Fracking & Proppant,LBRT,Liberty Energy
+Fracking & Proppant,PTEN,Patterson-UTI
+Fracking & Proppant,HCLP,Hi-Crush
+Pipelines (Liquids),EPD,Enterprise Products
+Pipelines (Liquids),PAA,Plains All American
+Pipelines (Liquids),ENB,Enbridge
+Pipelines (Gas),ET,Energy Transfer
+Pipelines (Gas),KMI,Kinder Morgan
+Pipelines (Gas),WMB,Williams Companies
+Pipelines (Gas),TRP,TC Energy
+Pipelines (Gas),OKE,ONEOK
+Pipelines (Gas),MPLX,MPLX LP
+Refining & Marketing,MPC,Marathon Petroleum
+Refining & Marketing,VLO,Valero
+Refining & Marketing,PSX,Phillips 66
+Refining & Marketing,DINO,HF Sinclair
+Refining & Marketing,CVI,CVR Energy
+Refining & Marketing,PBF,PBF Energy
+LNG,LNG,Cheniere Energy
+LNG,CQP,Cheniere Energy Partners
+LNG,NFE,New Fortress Energy
+Chemicals & NGLs,LYB,LyondellBasell
+Chemicals & NGLs,DOW,Dow Inc
+Chemicals & NGLs,WLK,Westlake
+Chemicals & NGLs,EMN,Eastman Chemical
+Carbon & Hydrogen,APD,Air Products
+Carbon & Hydrogen,LIN,Linde
+Renewable Diesel,DAR,Darling Ingredients
+Renewable Diesel,REGI,Renewable Energy Group
+Tech & Geoscience,CGG,CGG
+Tech & Geoscience,PLTR,Palantir (Energy)
+Power & Electrification,GEV,GE Vernova
+Trading & Arbitrage,GLEN,Glencore
+Consumer Health & Telehealth,HIMS,Hims & Hers
+Consumer Health & Telehealth,TDOC,Teladoc
+Consumer Health & Telehealth,GDRX,GoodRx
+Consumer Brands,KVUE,Kenvue
+Consumer Brands,HLN,Haleon
+Aesthetics,INMD,InMode
+Aesthetics,SKIN,The Beauty Health Co
+Dental & Ortho,ALGN,Align Tech
+Dental & Ortho,HSIC,Henry Schein
+Dental & Ortho,NVST,Envista
+Dental & Ortho,PDCO,Patterson
+Dental & Ortho,XRAY,Dentsply Sirona
+Animal Health,ZTS,Zoetis
+Animal Health,IDXX,IDEXX
+Animal Health,CHWY,Chewy
+Animal Health,ELAN,Elanco
+Animal Health,PETQ,PetIQ
+Payers (Insurance),UNH,UnitedHealth
+Payers (Insurance),ELV,Elevance
+Payers (Insurance),CI,Cigna
+Payers (Insurance),HUM,Humana
+Payers (Insurance),CNC,Centene
+Payers (Insurance),OSCR,Oscar Health
+Payers (Insurance),CLOV,Clover Health
+Physician Networks,MD,Pediatrix
+Physician Networks,AGL,Agilon
+Physician Networks,PRVA,Privia
+Physician Networks,AMEH,Apollo Medical
+Nurse Staffing,AMN,AMN Healthcare
+Nurse Staffing,HSAM,HealthStream
+Benefits & HSAs,HQY,HealthEquity
+Benefits & HSAs,PGNY,Progyny
+Ops & SaaS,RCM,R1 RCM
+Ops & SaaS,PHR,Phreesia
+Ops & SaaS,DOCS,Doximity
+Ops & SaaS,EVH,Evolent
+Digital Health & Wearables,AAPL,Apple (Health)
+Digital Health & Wearables,GRMN,Garmin
+Digital Health & Wearables,MASI,Masimo
+Therapeutics (Metabolic),LLY,Eli Lilly
+Therapeutics (Metabolic),NVO,Novo Nordisk
+Therapeutics (Metabolic),VKTX,Viking Therapeutics
+Therapeutics (Metabolic),ZEAL,Zealand Pharma
+Therapeutics (Metabolic),ALT,Altimmune
+Therapeutics (Metabolic),GPCR,Structure Therapeutics
+Immunology,ABBV,AbbVie
+Immunology,JNJ,Johnson & Johnson
+Immunology,ARGX,Argenx
+Immunology,REGN,Regeneron
+Oncology,MRK,Merck
+Oncology,BMY,Bristol Myers Squibb
+Oncology,GILD,Gilead
+Oncology,INCY,Incyte
+Oncology,EXEL,Exelixis
+Oncology,ITOS,iTeos
+Oncology,IOVA,Iovance
+Neuroscience,VRTX,Vertex
+Neuroscience,BIIB,Biogen
+Neuroscience,NBIX,Neurocrine
+Neuroscience,ITCI,Intra-Cellular
+Neuroscience,AXSM,Axsome
+Neuroscience,JAZZ,Jazz Pharma
+Neuroscience,INDV,Indivior
+Rare Disease,ALNY,Alnylam
+Rare Disease,KRY,Krystal Biotech
+Rare Disease,BBIO,BridgeBio
+Rare Disease,BLUE,Bluebird Bio
+Rare Disease,QURE,uniQure
+Vaccines,MRNA,Moderna
+Vaccines,BNTX,BioNTech
+Vaccines,NVAX,Novavax
+MedTech (Robotics),ISRG,Intuitive Surgical
+MedTech (Robotics),SYK,Stryker
+MedTech (Robotics),GMED,Globus Medical
+MedTech (Robotics),PRO,PROCEPT BioRobotics
+Diabetes,DXCM,DexCom
+Diabetes,ABT,Abbott
+Diabetes,PODD,Insulet
+Diabetes,TNDM,Tandem Diabetes
+Cardio,EW,Edwards Lifesciences
+Cardio,BSX,Boston Scientific
+Cardio,MDT,Medtronic
+Cardio,SWAV,Shockwave
+Cardio,PEN,Penumbra
+Cardio,ATRC,AtriCure
+Cardio,IRTC,iRhythm
+Organ Transport,TMDX,TransMedics
+Organ Transport,XVIVO,XVIVO Perfusion
+Organ Transport,HUMA,Humacyte
+Medical Devices,GEHC,GE HealthCare
+Medical Devices,PHG,Philips
+Medical Devices,BDX,Becton Dickinson
+Medical Devices,BAX,Baxter
+Medical Devices,COO,CooperCompanies
+Medical Devices,STE,Steris
+Vision,ALC,Alcon
+Vision,BLCO,Bausch + Lomb
+Vision,RXST,RxSight
+Vision,STAA,STAAR Surgical
+Vision,GKOS,Glaukos
+Sleep,INSP,Inspire Medical
+Sleep,RMD,ResMed
+AI & Digital Bio,RXRX,Recursion Pharma
+AI & Digital Bio,SDGR,Schrodinger
+AI & Digital Bio,ABSI,Absci
+AI & Digital Bio,CERT,Certara
+AI & Digital Bio,TEM,Tempus AI
+AI & Digital Bio,NVDA,Nvidia (BioNeMo)
+Diagnostics (Liquid Biopsy),EXAS,Exact Sciences
+Diagnostics (Liquid Biopsy),GRAL,Grail
+Diagnostics (Liquid Biopsy),GH,Guardant Health
+Diagnostics (Liquid Biopsy),NTRA,Natera
+Genomic Testing,MYGN,Myriad Genetics
+Genomic Testing,VCYT,Veracyte
+Genomic Testing,NEO,NeoGenomics
+Genomic Testing,CDNA,CareDx
+AI Imaging,LNTH,Lantheus
+AI Imaging,RDNT,RadNet
+AI Imaging,NNOX,Nano-X Imaging
+AI Imaging,BFLY,Butterfly Network
+Life Science Tools,TMO,Thermo Fisher
+Life Science Tools,A,Agilent
+Life Science Tools,WAT,Waters Corp
+Life Science Tools,RVTY,Revvity
+Bioprocessing,DHR,Danaher
+Bioprocessing,RGEN,Repligen
+Bioprocessing,AVTR,Avantor
+Genomics (Editing),CRSP,CRISPR Therapeutics
+Genomics (Editing),NTLA,Intellia
+Genomics (Editing),BEAM,Beam Therapeutics
+Genomics (Editing),EDIT,Editas Medicine
+Genomics (Sequencing),ILMN,Illumina
+Genomics (Sequencing),PACB,Pacific Biosciences
+Genomics (Sequencing),TWST,Twist Bioscience
+Spatial Biology,TXG,10x Genomics
+Spatial Biology,BRKR,Bruker
+Facilities (Hospitals),HCA,HCA Healthcare
+Facilities (Hospitals),THC,Tenet
+Facilities (Hospitals),UHS,Universal Health
+Facilities (Hospitals),EHC,Encompass Health
+Facilities (Dialysis),DVA,DaVita
+Facilities (Dialysis),FMS,Fresenius
+Facilities (Behavioral),ACHC,Acadia Healthcare
+Facilities (Skilled Nursing),ENSG,Ensign Group
+Facilities (Skilled Nursing),BKD,Brookdale
+Facilities (Skilled Nursing),SEM,Select Medical
+Logistics (Distro),MCK,McKesson
+Logistics (Distro),COR,Cencora
+Logistics (Distro),CAH,Cardinal Health
+Logistics (CDMO),CTLT,Catalent
+Logistics (CDMO),SOLV,Solventum
+Logistics (CDMO),WST,West Pharma
+Logistics (CDMO),STVN,Stevanato Group
+REITs,WELL,Welltower
+REITs,VTR,Ventas
+REITs,ARE,Alexandria Real Estate
+REITs,DOC,Healthpeak
+REITs,HR,Healthcare Realty
+Retail Pharmacy,CVS,CVS Health
+Retail Pharmacy,WBA,Walgreens
+CROs,IQV,IQVIA
+CROs,ICLR,ICON
+CROs,MEDP,Medpace
+CROs,CRL,Charles River
+Enterprise & Design,FIG,Figma (Private/Proxy)
+Enterprise & Design,ADBE,Adobe
+Enterprise & Design,PLTR,Palantir
+Enterprise & Design,NOW,ServiceNow
+Enterprise & Design,CRM,Salesforce
+Pure-Play AI,C3.AI,C3.ai
+Pure-Play AI,BBAI,BigBear.ai
+Pure-Play AI,INOD,Innodata
+Security,NTSK,Netskope
+Security,CYBR,CyberArk
+Security,TENB,Tenable
+Security,PANW,Palo Alto Networks
+Security,CRWD,CrowdStrike
+Vertical SaaS,TOST,Toast
+Vertical SaaS,PCOR,Procore
+Vertical SaaS,VEEV,Veeva
+Consumer & Gig,UBER,Uber
+Consumer & Gig,ABNB,Airbnb
+Consumer & Gig,DASH,DoorDash
+Consumer & Gig,ETSY,Etsy
+Consumer & Gig,RDDT,Reddit
+Fintech,COIN,Coinbase
+Fintech,HOOD,Robinhood
+Creator & Gaming,UNITY,Unity
+Creator & Gaming,RBLX,Roblox
+Dev & Data,CFLT,Confluent
+Dev & Data,MDB,MongoDB
+Dev & Data,SNOW,Snowflake
+Dev & Data,DDOG,Datadog
+Hyperscalers,MSFT,Microsoft
+Hyperscalers,AMZN,Amazon
+Hyperscalers,ORCL,Oracle
+Hyperscalers,GOOGL,Google
+Industrial & IoT,ZBRA,Zebra Technologies
+Industrial & IoT,TRMB,Trimble
+Industrial & IoT,KEYS,Keysight
+Industrial & IoT,TDY,Teledyne
+Applied: Autonomous,AUR,Aurora Innovation
+Applied: Defense,NOC,Northrop Grumman
+Applied: Defense,RTX,Raytheon
+Power & Grid,CEG,Constellation Energy
+Power & Grid,VST,Vistra
+AI Chips,NVDA,Nvidia
+AI Chips,AMD,AMD
+AI Chips,IONQ,IonQ
+AI Chips,SOUN,SoundHound
+AI Chips,LSCC,Lattice Semi
+Semi Equipment,KLAC,KLA Corp
+Semi Equipment,LRCX,Lam Research
+Semi Equipment,AMAT,Applied Materials
+Semi Equipment,ONTO,Onto Innovation
+Semi Equipment,CAMT,Camtek
+Miners to HPC,CORZ,Core Scientific
+Miners to HPC,WULF,TeraWulf
+Miners to HPC,IREN,Iris Energy
+Thermal,VRT,Vertiv
+Server OEMs,SMCI,Super Micro
+Server OEMs,DELL,Dell
+Server OEMs,HPQ,HP Inc
+Grocery/General,WMT,Walmart
+Grocery/General,COST,Costco
+Ecommerce,AMZN,Amazon
+Apparel,NKE,Nike
+Luxury,LVMH,LVMH
+Payments,V,Visa
+Payments,SQ,Square (Block)
+Logistics Tech,UBER,Uber
+Logistics Tech,CART,Instacart
+CRM,CRM,Salesforce
+Real Estate,SPG,Simon Property Group
+Logistics,ODFL,Old Dominion
+Logistics,UNP,Union Pacific
